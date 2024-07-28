@@ -1454,7 +1454,11 @@ dependencies = [
 [[package]]
 name = "dynamic-amm"
 <<<<<<< HEAD
+<<<<<<< HEAD
 version = "0.6.1"
+=======
+version = "0.6.0"
+>>>>>>> e2419ce (anchor 29)
 =======
 version = "0.1.2"
 >>>>>>> a51a3be (anchor 29)
