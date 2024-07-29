@@ -155,6 +155,10 @@ pub fn compute_quote(
         .protocol_trading_fee(trade_fee)
         .context("Fail to calculate protocol trading fee")?;
 
+    let trade_fee_after_protocol_fee = trade_fee
+        .checked_sub(protocol_fee)
+        .context("Fail to subtract protocol fee from trade fee")?;
+
     let in_amount_after_protocol_fee = in_amount
         .checked_sub(protocol_fee.try_into()?)
         .context("Fail to calculate in_amount_after_protocol_fee")?;
@@ -192,7 +196,7 @@ pub fn compute_quote(
         .context("Fail to get actual_in_amount")?;
 
     let actual_in_amount_after_fee = actual_in_amount
-        .checked_sub(trade_fee.try_into()?)
+        .checked_sub(trade_fee_after_protocol_fee.try_into()?)
         .context("Fail to calculate in_amount_after_fee")?;
 
     let swap_curve = get_swap_curve(pool.curve_type);
@@ -227,7 +231,7 @@ pub fn compute_quote(
     );
 
     Ok(QuoteResult {
-        fee: trade_fee.try_into()?,
+        fee: trade_fee_after_protocol_fee.try_into()?,
         out_amount,
     })
 }
