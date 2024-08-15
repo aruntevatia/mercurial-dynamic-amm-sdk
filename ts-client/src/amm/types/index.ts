@@ -1,18 +1,16 @@
 import { AccountInfo, PublicKey, Transaction } from '@solana/web3.js';
 import { TokenInfo } from '@solana/spl-token-registry';
-import { IdlAccounts, IdlTypes, Program } from '@project-serum/anchor';
+import { IdlAccounts, IdlTypes, Program } from '@coral-xyz/anchor';
 import BN from 'bn.js';
 import { Amm as AmmIdl } from '../idl';
 import { VaultState, VaultIdl } from '@mercurial-finance/vault-sdk';
 import Decimal from 'decimal.js';
-import { publicKey, struct, u64, u8, option } from '@project-serum/borsh';
+import { publicKey, struct, u64, u8, option } from '@coral-xyz/borsh';
 
 export type AmmProgram = Program<AmmIdl>;
 export type VaultProgram = Program<VaultIdl>;
 
 export interface AmmImplementation {
-  tokenA: TokenInfo;
-  tokenB: TokenInfo;
   decimals: number;
   isStablePool: boolean;
   updateState: () => Promise<void>;
@@ -30,13 +28,18 @@ export interface AmmImplementation {
     tokenAOutAmount: BN,
     tokenBOutAmount: BN,
   ) => Promise<Transaction>;
-  getUserLockEscrow: (owner: PublicKey, lockEscrowAccount: LockEscrowAccount) => Promise<LockEscrow | null>;
+  getUserLockEscrow: (owner: PublicKey) => Promise<LockEscrow | null>;
 }
 
 type Fees = {
   lp?: BN;
   tokenA: BN;
   tokenB: BN;
+};
+
+export type tokenAddressAndDecimals = {
+  address: string;
+  decimals: number;
 };
 
 export interface LockEscrow {
@@ -113,6 +116,7 @@ export type StableSwapCurve = {
     amp: BN;
     tokenMultiplier: TokenMultiplier;
     depeg: Depeg;
+    lastAmpUpdatedTimestamp: BN;
   };
 };
 
@@ -147,11 +151,11 @@ export interface TokenMultiplier {
 export type PoolType = PermissionedType | PermissionedlessType;
 
 export type PermissionedType = {
-  Permissioned: {};
+  permissioned: {};
 };
 
 export type PermissionedlessType = {
-  Permissionless: {};
+  permissionless: {};
 };
 
 export type PoolState = Omit<IdlAccounts<AmmIdl>['pool'], 'curveType' | 'fees' | 'poolType'> & {
@@ -159,6 +163,7 @@ export type PoolState = Omit<IdlAccounts<AmmIdl>['pool'], 'curveType' | 'fees' |
   fees: PoolFees;
   poolType: PoolType;
 };
+
 export type Depeg = Omit<IdlTypes<AmmIdl>['Depeg'], 'depegType'> & { depegType: DepegType };
 export type PoolFees = IdlTypes<AmmIdl>['PoolFees'];
 export type AlphaVault = IdlTypes<AmmIdl>['AlphaVault'];
@@ -187,8 +192,6 @@ export interface StakePool {
   poolTokenSupply: BN;
 }
 
-const feeFields = [u64('denominator'), u64('numerator')];
-
 export const StakePoolLayout = struct([
   u8('accountType'),
   publicKey('manager'),
@@ -203,23 +206,6 @@ export const StakePoolLayout = struct([
   u64('totalLamports'),
   u64('poolTokenSupply'),
   u64('lastUpdateEpoch'),
-  struct([u64('unixTimestamp'), u64('epoch'), publicKey('custodian')], 'lockup'),
-  struct(feeFields, 'epochFee'),
-  option(struct(feeFields), 'nextEpochFee'),
-  option(publicKey(), 'preferredDepositValidatorVoteAddress'),
-  option(publicKey(), 'preferredWithdrawValidatorVoteAddress'),
-  struct(feeFields, 'stakeDepositFee'),
-  struct(feeFields, 'stakeWithdrawalFee'),
-  option(struct(feeFields), 'nextStakeWithdrawalFee'),
-  u8('stakeReferralFee'),
-  option(publicKey(), 'solDepositAuthority'),
-  struct(feeFields, 'solDepositFee'),
-  u8('solReferralFee'),
-  option(publicKey(), 'solWithdrawAuthority'),
-  struct(feeFields, 'solWithdrawalFee'),
-  option(struct(feeFields), 'nextSolWithdrawalFee'),
-  u64('lastEpochPoolTokenSupply'),
-  u64('lastEpochTotalLamports'),
 ]);
 
 /** Utils */

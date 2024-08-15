@@ -83,8 +83,10 @@ pub struct Pool {
     pub protocol_token_a_fee: Pubkey, //32
     /// Protocol fee token account for token B. Used to receive trading fee.
     pub protocol_token_b_fee: Pubkey, //32
-    /// Owner of the pool.
-    pub admin: Pubkey, //32
+    /// Fee last updated timestamp
+    pub fee_last_updated_at: u64,
+    // Padding leftover from deprecated admin pubkey. Beware of tombstone when reusing it.
+    pub _padding0: [u8; 24],
     /// Store the fee charges setting.
     pub fees: PoolFees, //48
     /// Pool type
@@ -287,7 +289,10 @@ pub struct Config {
     pub pool_fees: PoolFees,
     pub activation_duration_in_slot: u64,
     pub vault_config_key: Pubkey,
-    pub _padding: [u8; 260],
+    // If pool_creator_authority == Pubkey::default() anyone can create a pool with the config,
+    // Otherwise only pool_creator_authority is able to create the pool
+    pub pool_creator_authority: Pubkey,
+    pub _padding: [u8; 228],
 }
 
 pub struct AlphaVaultConfig {

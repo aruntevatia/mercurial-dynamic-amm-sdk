@@ -1,5 +1,5 @@
 export type Amm = {
-  version: '0.4.12';
+  version: '0.4.14';
   name: 'amm';
   docs: ['Program for AMM'];
   instructions: [
@@ -1160,10 +1160,10 @@ export type Amm = {
           docs: ['Pool account (PDA)'];
         },
         {
-          name: 'admin';
+          name: 'feeOperator';
           isMut: false;
           isSigner: true;
-          docs: ['Admin account. Must be owner of the pool.'];
+          docs: ['Fee operator account'];
         },
       ];
       args: [
@@ -1192,7 +1192,7 @@ export type Amm = {
           name: 'admin';
           isMut: false;
           isSigner: true;
-          docs: ['Admin account. Must be owner of the pool.'];
+          docs: ['Admin account.'];
         },
       ];
       args: [
@@ -1203,31 +1203,6 @@ export type Amm = {
           };
         },
       ];
-    },
-    {
-      name: 'transferAdmin';
-      docs: ['Transfer the admin of the pool to new admin.'];
-      accounts: [
-        {
-          name: 'pool';
-          isMut: true;
-          isSigner: false;
-          docs: ['Pool account (PDA)'];
-        },
-        {
-          name: 'admin';
-          isMut: false;
-          isSigner: true;
-          docs: ['Admin account. Must be owner of the pool.'];
-        },
-        {
-          name: 'newAdmin';
-          isMut: false;
-          isSigner: true;
-          docs: ['New admin account.'];
-        },
-      ];
-      args: [];
     },
     {
       name: 'getPoolInfo';
@@ -1523,7 +1498,7 @@ export type Amm = {
           name: 'owner';
           isMut: true;
           isSigner: true;
-          docs: ['Owner of lock account'];
+          docs: ['Can be anyone'];
         },
         {
           name: 'sourceTokens';
@@ -1942,6 +1917,73 @@ export type Amm = {
         },
       ];
     },
+    {
+      name: 'updateActivationSlot';
+      docs: ['Update activation slot'];
+      accounts: [
+        {
+          name: 'pool';
+          isMut: true;
+          isSigner: false;
+          docs: ['Pool account (PDA)'];
+        },
+        {
+          name: 'admin';
+          isMut: false;
+          isSigner: true;
+          docs: ['Admin account.'];
+        },
+      ];
+      args: [
+        {
+          name: 'newActivationSlot';
+          type: 'u64';
+        },
+      ];
+    },
+    {
+      name: 'withdrawProtocolFees';
+      docs: ['Withdraw protocol fee'];
+      accounts: [
+        {
+          name: 'pool';
+          isMut: false;
+          isSigner: false;
+          docs: ['Pool account (PDA)'];
+        },
+        {
+          name: 'aVaultLp';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'protocolTokenAFee';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'protocolTokenBFee';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'treasuryTokenA';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'treasuryTokenB';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'tokenProgram';
+          isMut: false;
+          isSigner: false;
+        },
+      ];
+      args: [];
+    },
   ];
   accounts: [
     {
@@ -1964,9 +2006,13 @@ export type Amm = {
             type: 'publicKey';
           },
           {
+            name: 'poolCreatorAuthority';
+            type: 'publicKey';
+          },
+          {
             name: 'padding';
             type: {
-              array: ['u8', 260];
+              array: ['u8', 228];
             };
           },
         ];
@@ -2096,9 +2142,15 @@ export type Amm = {
             type: 'publicKey';
           },
           {
-            name: 'admin';
-            docs: ['Owner of the pool.'];
-            type: 'publicKey';
+            name: 'feeLastUpdatedAt';
+            docs: ['Fee last updated timestamp'];
+            type: 'u64';
+          },
+          {
+            name: 'padding0';
+            type: {
+              array: ['u8', 24];
+            };
           },
           {
             name: 'fees';
@@ -2259,6 +2311,10 @@ export type Amm = {
           },
           {
             name: 'vaultConfigKey';
+            type: 'publicKey';
+          },
+          {
+            name: 'poolCreatorAuthority';
             type: 'publicKey';
           },
           {
@@ -2866,6 +2922,36 @@ export type Amm = {
         },
       ];
     },
+    {
+      name: 'WithdrawProtocolFees';
+      fields: [
+        {
+          name: 'pool';
+          type: 'publicKey';
+          index: false;
+        },
+        {
+          name: 'protocolAFee';
+          type: 'u64';
+          index: false;
+        },
+        {
+          name: 'protocolBFee';
+          type: 'u64';
+          index: false;
+        },
+        {
+          name: 'protocolAFeeOwner';
+          type: 'publicKey';
+          index: false;
+        },
+        {
+          name: 'protocolBFeeOwner';
+          type: 'publicKey';
+          index: false;
+        },
+      ];
+    },
   ];
   errors: [
     {
@@ -3093,11 +3179,26 @@ export type Amm = {
       name: 'InvalidActivationSlotInDuration';
       msg: 'Invalid activation slot in duration';
     },
+    {
+      code: 6045;
+      name: 'PoolIsNotLaunchPool';
+      msg: 'Pool is not launch pool';
+    },
+    {
+      code: 6046;
+      name: 'UnableToModifyActivationSlot';
+      msg: 'Unable to modify activation slot';
+    },
+    {
+      code: 6047;
+      name: 'InvalidAuthorityToCreateThePool';
+      msg: 'Invalid authority to create the pool';
+    },
   ];
 };
 
 export const IDL: Amm = {
-  version: '0.4.12',
+  version: '0.4.14',
   name: 'amm',
   docs: ['Program for AMM'],
   instructions: [
@@ -4258,10 +4359,10 @@ export const IDL: Amm = {
           docs: ['Pool account (PDA)'],
         },
         {
-          name: 'admin',
+          name: 'feeOperator',
           isMut: false,
           isSigner: true,
-          docs: ['Admin account. Must be owner of the pool.'],
+          docs: ['Fee operator account'],
         },
       ],
       args: [
@@ -4290,7 +4391,7 @@ export const IDL: Amm = {
           name: 'admin',
           isMut: false,
           isSigner: true,
-          docs: ['Admin account. Must be owner of the pool.'],
+          docs: ['Admin account.'],
         },
       ],
       args: [
@@ -4301,31 +4402,6 @@ export const IDL: Amm = {
           },
         },
       ],
-    },
-    {
-      name: 'transferAdmin',
-      docs: ['Transfer the admin of the pool to new admin.'],
-      accounts: [
-        {
-          name: 'pool',
-          isMut: true,
-          isSigner: false,
-          docs: ['Pool account (PDA)'],
-        },
-        {
-          name: 'admin',
-          isMut: false,
-          isSigner: true,
-          docs: ['Admin account. Must be owner of the pool.'],
-        },
-        {
-          name: 'newAdmin',
-          isMut: false,
-          isSigner: true,
-          docs: ['New admin account.'],
-        },
-      ],
-      args: [],
     },
     {
       name: 'getPoolInfo',
@@ -4621,7 +4697,7 @@ export const IDL: Amm = {
           name: 'owner',
           isMut: true,
           isSigner: true,
-          docs: ['Owner of lock account'],
+          docs: ['Can be anyone'],
         },
         {
           name: 'sourceTokens',
@@ -5040,6 +5116,73 @@ export const IDL: Amm = {
         },
       ],
     },
+    {
+      name: 'updateActivationSlot',
+      docs: ['Update activation slot'],
+      accounts: [
+        {
+          name: 'pool',
+          isMut: true,
+          isSigner: false,
+          docs: ['Pool account (PDA)'],
+        },
+        {
+          name: 'admin',
+          isMut: false,
+          isSigner: true,
+          docs: ['Admin account.'],
+        },
+      ],
+      args: [
+        {
+          name: 'newActivationSlot',
+          type: 'u64',
+        },
+      ],
+    },
+    {
+      name: 'withdrawProtocolFees',
+      docs: ['Withdraw protocol fee'],
+      accounts: [
+        {
+          name: 'pool',
+          isMut: false,
+          isSigner: false,
+          docs: ['Pool account (PDA)'],
+        },
+        {
+          name: 'aVaultLp',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'protocolTokenAFee',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'protocolTokenBFee',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'treasuryTokenA',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'treasuryTokenB',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'tokenProgram',
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [],
+    },
   ],
   accounts: [
     {
@@ -5062,9 +5205,13 @@ export const IDL: Amm = {
             type: 'publicKey',
           },
           {
+            name: 'poolCreatorAuthority',
+            type: 'publicKey',
+          },
+          {
             name: 'padding',
             type: {
-              array: ['u8', 260],
+              array: ['u8', 228],
             },
           },
         ],
@@ -5194,9 +5341,15 @@ export const IDL: Amm = {
             type: 'publicKey',
           },
           {
-            name: 'admin',
-            docs: ['Owner of the pool.'],
-            type: 'publicKey',
+            name: 'feeLastUpdatedAt',
+            docs: ['Fee last updated timestamp'],
+            type: 'u64',
+          },
+          {
+            name: 'padding0',
+            type: {
+              array: ['u8', 24],
+            },
           },
           {
             name: 'fees',
@@ -5357,6 +5510,10 @@ export const IDL: Amm = {
           },
           {
             name: 'vaultConfigKey',
+            type: 'publicKey',
+          },
+          {
+            name: 'poolCreatorAuthority',
             type: 'publicKey',
           },
           {
@@ -5964,6 +6121,36 @@ export const IDL: Amm = {
         },
       ],
     },
+    {
+      name: 'WithdrawProtocolFees',
+      fields: [
+        {
+          name: 'pool',
+          type: 'publicKey',
+          index: false,
+        },
+        {
+          name: 'protocolAFee',
+          type: 'u64',
+          index: false,
+        },
+        {
+          name: 'protocolBFee',
+          type: 'u64',
+          index: false,
+        },
+        {
+          name: 'protocolAFeeOwner',
+          type: 'publicKey',
+          index: false,
+        },
+        {
+          name: 'protocolBFeeOwner',
+          type: 'publicKey',
+          index: false,
+        },
+      ],
+    },
   ],
   errors: [
     {
@@ -6190,6 +6377,21 @@ export const IDL: Amm = {
       code: 6044,
       name: 'InvalidActivationSlotInDuration',
       msg: 'Invalid activation slot in duration',
+    },
+    {
+      code: 6045,
+      name: 'PoolIsNotLaunchPool',
+      msg: 'Pool is not launch pool',
+    },
+    {
+      code: 6046,
+      name: 'UnableToModifyActivationSlot',
+      msg: 'Unable to modify activation slot',
+    },
+    {
+      code: 6047,
+      name: 'InvalidAuthorityToCreateThePool',
+      msg: 'Invalid authority to create the pool',
     },
   ],
 };

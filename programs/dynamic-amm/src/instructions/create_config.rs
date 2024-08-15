@@ -1,7 +1,4 @@
-use crate::constants::fee::FEE_DENOMINATOR;
 use crate::constants::seeds::CONFIG_PREFIX;
-use crate::error::PoolError;
-use crate::event;
 use crate::state::Config;
 use anchor_lang::prelude::*;
 
@@ -9,6 +6,8 @@ use anchor_lang::prelude::*;
 pub struct ConfigParameters {
     pub trade_fee_numerator: u64,
     pub protocol_trade_fee_numerator: u64,
+    pub activation_duration_in_slot: u64,
+    pub pool_creator_authority: Pubkey,
     pub index: u64,
 }
 
@@ -31,11 +30,4 @@ pub struct CreateConfig<'info> {
     pub admin: Signer<'info>,
 
     pub system_program: Program<'info, System>,
-}
-
-pub fn create_config(
-    ctx: Context<CreateConfig>,
-    config_parameters: ConfigParameters,
-) -> Result<()> {
-    Ok(())
 }

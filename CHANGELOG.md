@@ -19,12 +19,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## dynamic-amm [0.5.0] - PR[#149](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/149)
+
+### Changed
+
+- Rename `admin` to `fee_operator` in `set_pool_fee` account context.
+- Removed deprecated field `admin` in pool state. It has been replaced by `fee_last_updated_at`.
+
+## @mercurial-finance/dynamic-amm-sdk [1.0.2] - PR PR[#149](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/149)
+
+### Changed
+
+- Update idl
+
+## @mercurial-finance/dynamic-amm-sdk [1.0.1] - PR [#150](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/150)
+
+### Added
+
+- `searchPoolsByToken`, search pool by passing token mint address
+
+## @mercurial-finance/dynamic-amm-sdk [1.0.0] - PR [#148](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/148)
+
+### Changed
+
+- Refactor `AmmImpl.create` function to use only 2 arguments: provider, poolAddress
+- Add 2 examples for ts-client: swap, get_pool_info
+- Update @mercurial-finance/vault-sdk to version 2.0.0
+- Use tokenMint instead of tokenInfo in most cases
+- Provide address and decimals in tokenAMint and tokenBMint
+- Differentiate tokenMint and tokenAddress(PublickKey Only)
+
+## @mercurial-finance/dynamic-amm-sdk [0.5.0] - PR [#144](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/144)
+
+### Changed
+
+- Pump "@solana/spl-token" to 0.4.6 and various relevant packages
+
+## @mercurial-finance/dynamic-amm-sdk [0.4.13] - PR #147
+
+### Deprecated
+
+- deprecated field `admin` in pool state
+
+### Changed
+
+- remove endpoint `transfer_admin`
+- All permissioned operations now can be signed from any address in the group of admins instead of a single admin key
+
+## @mercurial-finance/dynamic-amm-sdk [0.4.29] - PR #146
+
+### Fixed
+
+- Fixed `Invalid option nextEpochFee` error when decode LST pool stake pool nextEpochFee
+
+## @mercurial-finance/dynamic-amm-sdk [0.4.28] - PR #145
+
+### Changed
+
+- `getUserLockEscrow` no longer need to pass `lockEscrowAccount` as param
+
+## @mercurial-finance/dynamic-amm-sdk [0.4.27] - PR #142
+
+### Added
+
+- Use `getPoolConfigsWithPoolCreatorAuthority` to retrieve the pool configuration for a specific user. When the pool configuration returned from `getPoolConfigsWithPoolCreatorAuthority` is passed into `createPermissionlessConstantProductPoolWithConfig`, only that user can create pools. Please contact meteora team if you're not whitelisted for the config.
+
 ## @mercurial-finance/dynamic-amm-sdk [0.4.26] - PR #139
 
 ### Changed
 
 -`lockLiquidity` function is able to specify feePayer
-
 
 ## @mercurial-finance/dynamic-amm-sdk [0.4.25] - PR #132
 
@@ -45,15 +109,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AmmImpl.createPermissionlessConstantProductPoolWithConfig` to create constant product pool based on `config` account.
 - `AmmImpl.getFeeConfigurations` to get all fee configurations to be used in `AmmImpl.createPermissionlessConstantProductPoolWithConfig`
 
-
 ## @mercurial-finance/dynamic-amm-sdk [0.4.22] - PR #117
 
 ### Added
+
 - `swap` method param `referrerToken` is non-ATA address.
 - `AmmImpl.lockLiquidityNewlyCreatedPool` method to help lock liquidity for pool that haven't been created yet
 - `skipAta` flag to help skipping check for create ata when creating the pool in `AmmImpl.createPermissionlessPool`
-
-
 
 ## dynamic-amm [0.1.1] - PR #125
 
@@ -73,7 +135,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `MigrateFeeAccount` and `SetAdminFeeAccount` event
 
-
 ## @mercurial-finance/dynamic-amm-sdk [0.4.21] - PR #117
 
 ### Added
@@ -84,7 +145,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AmmImpl.getUserLockEscrow` to obtain the user's lock escrow state.
 - `AmmImpl.lockLiquidity` to lock the user's LP into the lock escrow.
 - `AmmImpl.claimLockFee` to claim fees from locked LPs in the lock escrow.
-
 
 ## dynamic-amm [0.1.2] - PR #134
 
