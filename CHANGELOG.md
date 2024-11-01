@@ -19,6 +19,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## dynamic-amm-quote - PR[#171](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/171)
+
+### Fixed
+
+- Fix `compute_quote` result doesn't matches simulation result
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.7] - PR[#168](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/168)
+
+### Added
+
+- Added `createPermissionlessConstantProductMemecoinPoolWithConfig` that include create mint instruction for create pool
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.6] - PR[#161](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/163)
+
+### Added
+
+- Added `poolFees` in `getFeeConfigurations` function
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.5] - PR[#161](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/163)
+
+### Added
+
+- Swap options on create pool config
+- Added `calculateSwapQuoteForGoingToCreateMemecoinPool` to allow swap quote on going to be created pool.
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.4] - PR[#161](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/164)
+
+### Changed
+
+- Added extra param `swapInitiator` for `getSwapQuote` function
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.3] - PR[#161](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/161)
+
+### Changed
+
+- update readme
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.2] - PR[#158](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/158)
+
+### Changed
+
+- options to skip preinstruction create associated token account in `createPermissionlessConstantProductPoolWithConfig` function
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.1] - PR[#157](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/157)
+
+### Fixed
+
+- Fix locked LP pending claim fee calculation
+
 ## dynamic-amm-quote [0.0.3] - PR[#151](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/151)
 
 ### Changed

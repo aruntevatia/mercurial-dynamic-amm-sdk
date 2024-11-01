@@ -7,6 +7,11 @@ import {
   VaultIdl,
   PROGRAM_ID as VAULT_PROGRAM_ID,
 } from '@mercurial-finance/vault-sdk';
+import {
+  STAKE_FOR_FEE_PROGRAM_ID,
+  IDL as StakeForFeeIDL,
+  StakeForFee as StakeForFeeIdl,
+} from '@meteora-ag/stake-for-fee';
 import { AnchorProvider, BN, Program } from '@coral-xyz/anchor';
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -17,14 +22,19 @@ import {
   getAssociatedTokenAddressSync,
   RawAccount,
   createCloseAccountInstruction,
+  getMinimumBalanceForRentExemptMint,
+  MintLayout,
+  createInitializeMintInstruction,
 } from '@solana/spl-token';
 import {
   AccountInfo,
   Connection,
+  Keypair,
   ParsedAccountData,
   PublicKey,
   SystemProgram,
   SYSVAR_CLOCK_PUBKEY,
+  Transaction,
   TransactionInstruction,
 } from '@solana/web3.js';
 import invariant from 'invariant';
@@ -38,6 +48,7 @@ import {
   CONSTANT_PRODUCT_DEFAULT_TRADE_FEE_BPS,
   METAPLEX_PROGRAM,
   SEEDS,
+  U64_MAX,
 } from './constants';
 import { ConstantProductSwap, StableSwap, SwapCurve, TradeDirection } from './curve';
 import {
@@ -49,6 +60,7 @@ import {
   DepegNone,
   DepegSplStake,
   ParsedClockState,
+  PoolFees,
   PoolInformation,
   PoolState,
   StableSwapCurve,
@@ -59,13 +71,21 @@ import {
 import { Amm as AmmIdl, IDL as AmmIDL } from './idl';
 import { TokenInfo } from '@solana/spl-token-registry';
 import Decimal from 'decimal.js';
+import {
+  createCreateMetadataAccountV3Instruction,
+  CreateMetadataAccountV3InstructionAccounts,
+  CreateMetadataAccountV3InstructionArgs,
+  DataV2,
+  PROGRAM_ID as PROGRAM_ID_META,
+} from '@metaplex-foundation/mpl-token-metadata';
 
 export const createProgram = (connection: Connection, programId?: string) => {
   const provider = new AnchorProvider(connection, {} as any, AnchorProvider.defaultOptions());
   const ammProgram = new Program<AmmIdl>(AmmIDL, programId ?? PROGRAM_ID, provider);
   const vaultProgram = new Program<VaultIdl>(VaultIDL, VAULT_PROGRAM_ID, provider);
+  const stakeForFeeProgram = new Program<StakeForFeeIdl>(StakeForFeeIDL, STAKE_FOR_FEE_PROGRAM_ID, provider);
 
-  return { provider, ammProgram, vaultProgram };
+  return { provider, ammProgram, vaultProgram, stakeForFeeProgram };
 };
 
 /**
@@ -355,6 +375,119 @@ export const getDepegAccounts = async (
   return depegAccounts;
 };
 
+export interface VaultAssociatedAccountStates {
+  vault: VaultState;
+  reserve: BN;
+  lpSupply: BN;
+}
+
+export type SwapQuoteParams2 = {
+  vaultA?: VaultAssociatedAccountStates;
+  vaultB?: VaultAssociatedAccountStates;
+  currentTime: number;
+};
+
+export const calculateSwapQuoteForGoingToCreateMemecoinPool = (
+  inAmountLamport: BN,
+  tokenADepositAmount: BN,
+  tokenBDepositAmount: BN,
+  aToB: boolean,
+  fees: PoolFees,
+  params: SwapQuoteParams2,
+) => {
+  interface LocalStates {
+    vaultStates: VaultAssociatedAccountStates;
+    poolVaultLp: BN;
+  }
+
+  const { currentTime } = params;
+  const vaultA: LocalStates | undefined = params.vaultA
+    ? { vaultStates: params.vaultA, poolVaultLp: new BN(0) }
+    : undefined;
+  const vaultB: LocalStates | undefined = params.vaultB
+    ? { vaultStates: params.vaultB, poolVaultLp: new BN(0) }
+    : undefined;
+
+  invariant(vaultA || vaultB, 'Must one side have vault');
+  invariant(!vaultA || !vaultB, 'Must one side have vault');
+
+  const getTokenAmountAfterDepositVault = (amount: BN, states?: LocalStates) => {
+    // No vault
+    if (!states) {
+      return amount;
+    }
+
+    const vaultWithdrawableAmount = calculateWithdrawableAmount(currentTime, states.vaultStates.vault);
+    const lpMinted = getUnmintAmount(amount, vaultWithdrawableAmount, states.vaultStates.lpSupply);
+
+    states.vaultStates.lpSupply = states.vaultStates.lpSupply.add(lpMinted);
+    states.vaultStates.vault.totalAmount = states.vaultStates.vault.totalAmount.add(amount);
+    states.poolVaultLp = states.poolVaultLp.add(lpMinted);
+
+    return getAmountByShare(
+      states.poolVaultLp,
+      calculateWithdrawableAmount(currentTime, states.vaultStates.vault),
+      states.vaultStates.lpSupply,
+    );
+  };
+
+  const getTokenAmountAfterWithdrawVault = (amount: BN, states?: LocalStates) => {
+    // No vault
+    if (!states) {
+      return amount;
+    }
+
+    const vaultWithdrawableAmount = calculateWithdrawableAmount(currentTime, states.vaultStates.vault);
+    const lpBurned = getUnmintAmount(amount, vaultWithdrawableAmount, states.vaultStates.lpSupply);
+
+    states.vaultStates.lpSupply = states.vaultStates.lpSupply.sub(lpBurned);
+    states.vaultStates.vault.totalAmount = states.vaultStates.vault.totalAmount.sub(amount);
+    states.poolVaultLp = states.poolVaultLp.sub(lpBurned);
+
+    return getAmountByShare(
+      states.poolVaultLp,
+      calculateWithdrawableAmount(currentTime, states.vaultStates.vault),
+      states.vaultStates.lpSupply,
+    );
+  };
+
+  const tokenAAmount = getTokenAmountAfterDepositVault(tokenADepositAmount, vaultA);
+  const tokenBAmount = getTokenAmountAfterDepositVault(tokenBDepositAmount, vaultB);
+
+  const [sourceAmount, swapSourceAmount, swapDestinationAmount, sourceVault, destinationVault] = aToB
+    ? [inAmountLamport, tokenAAmount, tokenBAmount, vaultA, vaultB]
+    : [inAmountLamport, tokenBAmount, tokenAAmount, vaultB, vaultA];
+
+  const tradeFee = sourceAmount.mul(fees.tradeFeeNumerator).div(fees.tradeFeeDenominator);
+  const protocolFee = tradeFee.mul(fees.protocolTradeFeeNumerator).div(fees.protocolTradeFeeDenominator);
+  const sourceAmountLessProtocolFee = sourceAmount.sub(protocolFee);
+
+  const beforeSwapSourceAmount = swapSourceAmount;
+  const afterSwapSourceAmount = sourceVault
+    ? getTokenAmountAfterDepositVault(sourceAmountLessProtocolFee, sourceVault)
+    : sourceAmountLessProtocolFee;
+
+  const actualSourceAmount = afterSwapSourceAmount.sub(beforeSwapSourceAmount);
+  const sourceAmountLessFee = actualSourceAmount.sub(tradeFee.sub(protocolFee));
+
+  const curve = new ConstantProductSwap();
+  const { outAmount: destinationAmount } = curve.computeOutAmount(
+    sourceAmountLessFee,
+    swapSourceAmount,
+    swapDestinationAmount,
+    aToB ? TradeDirection.AToB : TradeDirection.BToA,
+  );
+
+  const afterDestinationAmount = destinationVault
+    ? getTokenAmountAfterWithdrawVault(destinationAmount, destinationVault)
+    : destinationAmount;
+
+  return {
+    amountOut: afterDestinationAmount,
+    fee: sourceAmountLessProtocolFee,
+  };
+};
+
 /**
  * It calculates the amount of tokens you will receive after swapping your tokens
  * @param {PublicKey} inTokenMint - The mint of the token you're swapping in.
@@ -374,7 +507,12 @@ export const getDepegAccounts = async (
  * @param {BN} params.depegAccounts - A map of the depeg accounts. (get from `getDepegAccounts` util)
  * @returns The amount of tokens that will be received after the swap.
  */
-export const calculateSwapQuote = (inTokenMint: PublicKey, inAmountLamport: BN, params: SwapQuoteParam): SwapResult => {
+export const calculateSwapQuote = (
+  inTokenMint: PublicKey,
+  inAmountLamport: BN,
+  params: SwapQuoteParam,
+  swapInitiator?: PublicKey,
+): SwapResult => {
   const {
     vaultA,
     vaultB,
@@ -409,7 +547,10 @@ export const calculateSwapQuote = (inTokenMint: PublicKey, inAmountLamport: BN, 
     // Bootstrapping pool
     const activationType = poolState.bootstrapping.activationType;
     const currentPoint = activationType == ActivationType.Timestamp ? new BN(currentTime) : new BN(currentSlot);
-    invariant(currentPoint.gte(poolState.bootstrapping.activationPoint), 'Swap is disabled');
+    const canQuoteEarlier = swapInitiator ? swapInitiator.equals(poolState.bootstrapping.whitelistedVault) : false;
+    if (!canQuoteEarlier) {
+      invariant(currentPoint.gte(poolState.bootstrapping.activationPoint), 'Swap is disabled');
+    }
 
     swapCurve = new ConstantProductSwap();
   }
@@ -593,6 +734,15 @@ export const deriveConfigPda = (index: BN, programId: PublicKey) => {
   const [configPda] = PublicKey.findProgramAddressSync([Buffer.from('config'), index.toBuffer('le', 8)], programId);
 
   return configPda;
+};
+
+export const deriveProtocolTokenFee = (poolAddress: PublicKey, tokenMint: PublicKey, programId: PublicKey) => {
+  const [protocolTokenFee] = PublicKey.findProgramAddressSync(
+    [Buffer.from('fee'), tokenMint.toBuffer(), poolAddress.toBuffer()],
+    programId,
+  );
+
+  return protocolTokenFee;
 };
 
 export function derivePoolAddress(
@@ -790,3 +940,72 @@ export function generateCurveType(tokenInfoA: TokenInfo, tokenInfoB: TokenInfo, 
       }
     : { constantProduct: {} };
 }
+
+export async function createMint(
+  connection: Connection,
+  mintAccount: Keypair,
+  payer: PublicKey,
+  assetData: DataV2,
+  mintAuthority: PublicKey,
+  freezeAuthority: PublicKey | null,
+  decimals: number,
+  programId: PublicKey,
+): Promise<{ tx: Transaction; mintAccount: Keypair }> {
+  // Allocate memory for the account
+  const balanceNeeded = await getMinimumBalanceForRentExemptMint(connection);
+
+  const transaction = new Transaction();
+  transaction.add(
+    SystemProgram.createAccount({
+      fromPubkey: payer,
+      newAccountPubkey: mintAccount.publicKey,
+      lamports: balanceNeeded,
+      space: MintLayout.span,
+      programId,
+    }),
+  );
+
+  transaction.add(
+    createInitializeMintInstruction(mintAccount.publicKey, decimals, mintAuthority, freezeAuthority, programId),
+  );
+
+  const [metadata] = PublicKey.findProgramAddressSync(
+    [Buffer.from('metadata'), PROGRAM_ID_META.toBuffer(), mintAccount.publicKey.toBuffer()],
+    PROGRAM_ID_META,
+  );
+
+  const accounts: CreateMetadataAccountV3InstructionAccounts = {
+    metadata,
+    mint: mintAccount.publicKey,
+    mintAuthority: payer,
+    payer,
+    updateAuthority: payer,
+  };
+
+  const args: CreateMetadataAccountV3InstructionArgs = {
+    createMetadataAccountArgsV3: {
+      data: assetData,
+      isMutable: false,
+      collectionDetails: null,
+    },
+  };
+  transaction.add(createCreateMetadataAccountV3Instruction(accounts, args));
+
+  return { tx: transaction, mintAccount };
+}
+
+export const calculateLockAmounts = (amount: BN, feeWrapperPercent?: Decimal) => {
+  const safeFeeWrapperPercent = feeWrapperPercent?.gt(new Decimal(0))
+    ? Decimal.min(feeWrapperPercent, new Decimal(1))
+    : new Decimal(0);
+
+  const feeWrapperLockAmount = new BN(
+    new Decimal(amount.toString()).mul(safeFeeWrapperPercent).toFixed(0, Decimal.ROUND_DOWN),
+  );
+  const userLockAmount = safeFeeWrapperPercent.gt(new Decimal(0)) ? amount.sub(feeWrapperLockAmount) : U64_MAX;
+
+  return {
+    feeWrapperLockAmount,
+    userLockAmount,
+  };
+};
