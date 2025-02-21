@@ -6,12 +6,12 @@ import {
   IDL as VaultIDL,
   VaultIdl,
   PROGRAM_ID as VAULT_PROGRAM_ID,
-} from '@mercurial-finance/vault-sdk';
+} from '@meteora-ag/vault-sdk';
 import {
   STAKE_FOR_FEE_PROGRAM_ID,
   IDL as StakeForFeeIDL,
   StakeForFee as StakeForFeeIdl,
-} from '@meteora-ag/stake-for-fee';
+} from '@meteora-ag/m3m3';
 import { AnchorProvider, BN, Program } from '@coral-xyz/anchor';
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -24,7 +24,7 @@ import {
   createCloseAccountInstruction,
   getMinimumBalanceForRentExemptMint,
   MintLayout,
-  createInitializeMintInstruction,
+  createInitializeMintInstruction
 } from '@solana/spl-token';
 import {
   AccountInfo,
@@ -69,7 +69,6 @@ import {
   TokenMultiplier,
 } from './types';
 import { Amm as AmmIdl, IDL as AmmIDL } from './idl';
-import { TokenInfo } from '@solana/spl-token-registry';
 import Decimal from 'decimal.js';
 import {
   createCreateMetadataAccountV3Instruction,
@@ -231,7 +230,7 @@ export const computeActualDepositAmount = (
 };
 
 /**
- * Compute pool information, Typescript implementation of https://github.com/mercurial-finance/mercurial-dynamic-amm/blob/main/programs/amm/src/lib.rs#L960
+ * Compute pool information, Typescript implementation of https://github.com/meteora-ag/mercurial-dynamic-amm/blob/main/programs/amm/src/lib.rs#L960
  * @param {number} currentTime - the on solana chain time in seconds (SYSVAR_CLOCK_PUBKEY)
  * @param {BN} poolVaultALp - The amount of LP tokens in the pool for token A
  * @param {BN} poolVaultBLp - The amount of Lp tokens in the pool for token B,
@@ -716,6 +715,19 @@ export function deriveMintMetadata(lpMint: PublicKey) {
   );
 }
 
+export function deriveCustomizablePermissionlessConstantProductPoolAddress(
+  tokenA: PublicKey,
+  tokenB: PublicKey,
+  programId: PublicKey,
+) {
+  const [poolPubkey] = PublicKey.findProgramAddressSync(
+    [Buffer.from('pool'), getFirstKey(tokenA, tokenB), getSecondKey(tokenA, tokenB)],
+    programId,
+  );
+
+  return poolPubkey;
+}
+
 export function derivePoolAddressWithConfig(
   tokenA: PublicKey,
   tokenB: PublicKey,
@@ -747,8 +759,10 @@ export const deriveProtocolTokenFee = (poolAddress: PublicKey, tokenMint: Public
 
 export function derivePoolAddress(
   connection: Connection,
-  tokenInfoA: TokenInfo,
-  tokenInfoB: TokenInfo,
+  tokenA: PublicKey,
+  tokenB: PublicKey,
+  tokenADecimal: number,
+  tokenBDecimal: number,
   isStable: boolean,
   tradeFeeBps: BN,
   opt?: {
@@ -756,15 +770,13 @@ export function derivePoolAddress(
   },
 ) {
   const { ammProgram } = createProgram(connection, opt?.programId);
-  const curveType = generateCurveType(tokenInfoA, tokenInfoB, isStable);
-  const tokenAMint = new PublicKey(tokenInfoA.address);
-  const tokenBMint = new PublicKey(tokenInfoB.address);
+  const curveType = generateCurveType(tokenADecimal, tokenBDecimal, isStable);
 
   const [poolPubkey] = PublicKey.findProgramAddressSync(
     [
       Buffer.from([encodeCurveType(curveType)]),
-      getFirstKey(tokenAMint, tokenBMint),
-      getSecondKey(tokenAMint, tokenBMint),
+      getFirstKey(tokenA, tokenB),
+      getSecondKey(tokenA, tokenB),
       getTradeFeeBpsBuffer(curveType, tradeFeeBps),
     ],
     ammProgram.programId,
@@ -783,8 +795,10 @@ export function derivePoolAddress(
  */
 export async function checkPoolExists(
   connection: Connection,
-  tokenInfoA: TokenInfo,
-  tokenInfoB: TokenInfo,
+  mintA: PublicKey,
+  mintB: PublicKey,
+  mintADecimal: number,
+  mintBDecimal: number,
   isStable: boolean,
   tradeFeeBps: BN,
   opt?: {
@@ -793,7 +807,7 @@ export async function checkPoolExists(
 ): Promise<PublicKey | undefined> {
   const { ammProgram } = createProgram(connection, opt?.programId);
 
-  const poolPubkey = derivePoolAddress(connection, tokenInfoA, tokenInfoB, isStable, tradeFeeBps, {
+  const poolPubkey = derivePoolAddress(connection, mintA, mintB, mintADecimal, mintBDecimal, isStable, tradeFeeBps, {
     programId: opt?.programId,
   });
 
@@ -928,12 +942,12 @@ export const DepegType = {
   },
 };
 
-export function generateCurveType(tokenInfoA: TokenInfo, tokenInfoB: TokenInfo, isStable: boolean) {
+export function generateCurveType(mintADecimal: number, mintBDecimal: number, isStable: boolean) {
   return isStable
     ? {
         stable: {
           amp: PERMISSIONLESS_AMP,
-          tokenMultiplier: computeTokenMultiplier(tokenInfoA.decimals, tokenInfoB.decimals),
+          tokenMultiplier: computeTokenMultiplier(mintADecimal, mintBDecimal),
           depeg: { baseVirtualPrice: new BN(0), baseCacheUpdated: new BN(0), depegType: DepegType.none() },
           lastAmpUpdatedTimestamp: new BN(0),
         },
@@ -994,18 +1008,44 @@ export async function createMint(
   return { tx: transaction, mintAccount };
 }
 
-export const calculateLockAmounts = (amount: BN, feeWrapperPercent?: Decimal) => {
-  const safeFeeWrapperPercent = feeWrapperPercent?.gt(new Decimal(0))
-    ? Decimal.min(feeWrapperPercent, new Decimal(1))
-    : new Decimal(0);
+export const calculateLockAmounts = (amount: BN, feeWrapperRatio = new Decimal(0)) => {
+  if (feeWrapperRatio.lt(0) || feeWrapperRatio.gt(1)) {
+    throw new Error('Fee wrapper ratio should be between 0 and 1');
+  }
 
   const feeWrapperLockAmount = new BN(
-    new Decimal(amount.toString()).mul(safeFeeWrapperPercent).toFixed(0, Decimal.ROUND_DOWN),
+    new Decimal(amount.toString()).mul(feeWrapperRatio).toFixed(0, Decimal.ROUND_DOWN),
   );
-  const userLockAmount = safeFeeWrapperPercent.gt(new Decimal(0)) ? amount.sub(feeWrapperLockAmount) : U64_MAX;
+  const userLockAmount = amount.sub(feeWrapperLockAmount);
 
   return {
     feeWrapperLockAmount,
     userLockAmount,
   };
 };
+
+export async function createTransactions(
+  connection: Connection,
+  ixs: Array<Transaction | TransactionInstruction | (Transaction | TransactionInstruction)[]>,
+  payer: PublicKey,
+): Promise<Transaction[]> {
+  const latestBlockHash = await connection.getLatestBlockhash();
+  const resultTx: Transaction[] = [];
+
+  for (const instruction of ixs) {
+    const tx = new Transaction({
+      feePayer: payer,
+      ...latestBlockHash,
+    });
+
+    if (Array.isArray(instruction)) {
+      tx.add(...instruction);
+    } else {
+      tx.add(instruction);
+    }
+
+    resultTx.push(tx);
+  }
+
+  return resultTx;
+}

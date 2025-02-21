@@ -19,6 +19,137 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## @meteora-ag/dynamic-amm-sdk [1.3.0] - PR[#198](https://github.com/MeteoraAg/dynamic-amm-sdk/pull/198)
+
+### Security
+
+- remove `@solana/spl-token-registry` usage
+
+## @meteora-ag/dynamic-amm-sdk [1.2.1] - PR[#197](https://github.com/MeteoraAg/dynamic-amm-sdk/pull/197)
+
+### Security
+
+- update `@meteora-ag/vault-sdk` version
+
+## @meteora-ag/dynamic-amm-sdk [1.2.0] - PR[#196](https://github.com/MeteoraAg/dynamic-amm-sdk/pull/196)
+
+### Changed
+
+- move to `meteora-ag` org
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.23] - PR[#192](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/192)
+
+### Changed
+
+- Added new parameter `memecoinInfo.isMinted` to `createPermissionlessConstantProductMemecoinPoolWithConfig` to allow creating a fee vault with minted token
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.22] - PR[#191](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/191)
+
+### Added
+
+- Bump `@solana/web3.js`
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.21] - PR[#190](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/190)
+
+### Added
+
+- Update `@meteora-ag/m3m3@1.0.4`
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.20] - PR[#183](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/183)
+
+### Changed
+
+- Use optimal CU when creating pool instead of requesting max CU
+
+## dynamic-amm [0.6.1] - PR [180](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/180)
+
+### Added
+
+- Add a new endpoint `initialize_customizable_permissionless_constant_product_pool`, that allows pool creator to be able to set trading fee, activation_point and alpha-vault
+- Add a new endpoint `partner_claim_fees`, that allows pool creator (a.k.a partner) to claim profit shared from the protocol fees.
+
+### Changed
+
+- Endpoint `create_config` require `partner_fee_numerator`. It's used to share portion of protocol fee to the partner (pool_authority)
+- New field `PartnerInfo` in `Pool` account. It stores the information of the partner for profit sharing.
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.19] - PR[#180](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/180)
+
+### Added
+
+- `partnerClaimFees` function to allow partner to claim partner profit shared from the protocol fees
+- `createCustomizablePermissionlessConstantProductPool` function to allow user to create constant product pool with customizable trading fee, activation point, activation type, and alpha vault.
+
+### Changed
+
+- `createConfig` function require new parameter `partnerFeeNumerator`. It's used to share portion of protocol fee to the partner (pool_authority)
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.18] - PR[#185](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/185)
+
+### Fixed
+
+- Fix `calculateLockAmounts` util not calculating `userLockAmount` correctly if `feeWrapperRatio` is `null` or zero
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.17] - PR[#183](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/183)
+
+### Changed
+
+- Unified all getLatestBlockhash in all the functions
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.16] - PR[#182](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/182)
+
+### Added
+
+- Update ` @meteora-ag/stake-for-fee@1.0.28`
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.15] - PR[#178](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/178)
+
+### Added
+
+- Update ` @meteora-ag/stake-for-fee@1.0.26`
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.14] - PR[#177](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/177)
+
+### Added
+
+- Fix function `swapAndStakeForFee` to accept additional param `inAmountLamport`
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.13] - PR[#176](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/176)
+
+### Added
+
+- Fix function `swapAndStakeForFee`
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.12] - PR[#173](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/173)
+
+### Added
+
+- New function `swapAndStakeForFee`
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.11] - PR[#170](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/170)
+
+### Fixed
+
+- Fix user lock amount was 0
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.10] - PR[#174](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/174)
+
+### Changed
+
+- Allow `startClaimFeeTimestamp` to be set as null to start the claim immediately.
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.9] - PR[#173](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/168)
+
+### Changed
+
+- bump `@meteora-ag/stake-for-fee` version
+
+## @mercurial-finance/dynamic-amm-sdk [1.1.8] - PR[#173](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/168)
+
+### Changed
+
+- Added new parameter `opts.feeVault` for `createPermissionlessConstantProductMemecoinPoolWithConfig` to allow create fee vault with parameters
+
 ## dynamic-amm-quote - PR[#171](https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/pull/171)
 
 ### Fixed

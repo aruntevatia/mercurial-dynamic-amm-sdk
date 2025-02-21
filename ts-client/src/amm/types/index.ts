@@ -1,9 +1,8 @@
 import { AccountInfo, PublicKey, Transaction } from '@solana/web3.js';
-import { TokenInfo } from '@solana/spl-token-registry';
 import { IdlAccounts, IdlTypes, Program } from '@coral-xyz/anchor';
 import BN from 'bn.js';
 import { Amm as AmmIdl } from '../idl';
-import { VaultState, VaultIdl } from '@mercurial-finance/vault-sdk';
+import { VaultState, VaultIdl } from '@meteora-ag/vault-sdk';
 import Decimal from 'decimal.js';
 import { publicKey, struct, u64, u8, option, i64 } from '@coral-xyz/borsh';
 
@@ -168,6 +167,7 @@ export type Depeg = Omit<IdlTypes<AmmIdl>['Depeg'], 'depegType'> & { depegType: 
 export type PoolFees = IdlTypes<AmmIdl>['PoolFees'];
 export type Bootstrapping = IdlTypes<AmmIdl>['Bootstrapping'];
 export type LockEscrowAccount = IdlAccounts<AmmIdl>['lockEscrow'];
+export type CustomizableParams = IdlTypes<AmmIdl>['CustomizableParams'];
 
 export type PoolInformation = {
   tokenAAmount: BN;

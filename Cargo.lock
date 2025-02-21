@@ -1474,10 +1474,23 @@ checksum = "1435fa1053d8b2fbbe9be7e97eca7f33d37b28409959813daefc1446a14247f1"
 
 [[package]]
 name = "dynamic-amm"
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+version = "0.6.1"
+=======
 version = "0.6.0"
+>>>>>>> e2419ce (anchor 29)
+=======
+version = "0.1.2"
+>>>>>>> a51a3be (anchor 29)
+=======
+version = "0.6.0"
+>>>>>>> 6526cc1 (done)
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "solana-program",
 ]
 
 [[package]]
